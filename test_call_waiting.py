@@ -195,7 +195,7 @@ class TestPatchWait(object):
             assert res == "HELLO"
 
         assert callback.called
-        assert callback.call_args_list == [call(arg)]
+        assert callback.call_args_list == [call((arg,), {}, res, None)]
 
     def test_callback_multiple_calls(self):
 
@@ -214,13 +214,67 @@ class TestPatchWait(object):
         callback.side_effect = [False, True]
 
         with patch_wait(echo, 'upper', callback):
-            res = echo.upper(arg)
-            assert res == "HELLO-1"
-            res = echo.upper(arg)
-            assert res == "HELLO-2"
+            res1 = echo.upper(arg)
+            assert res1 == "HELLO-1"
+            res2 = echo.upper(arg)
+            assert res2 == "HELLO-2"
 
         assert callback.called
-        assert callback.call_args_list == [call(arg), call(arg)]
+        assert callback.call_args_list == [
+            call((arg,), {}, res1, None),
+            call((arg,), {}, res2, None),
+        ]
+
+    def test_callback_with_exception(self):
+
+        class EchoException(Exception):
+            pass
+
+        class Echo(object):
+
+            def error(self):
+                raise exc
+
+        echo = Echo()
+        exc = EchoException("error!")
+
+        callback = Mock()
+        callback.return_value = True
+
+        with patch_wait(echo, 'error', callback):
+            with pytest.raises(EchoException):
+                echo.error()
+
+        assert callback.called
+        assert callback.call_args_list == [call((), {}, None, (EchoException, exc, ANY))]
+
+    def test_callback_with_exception_multiple_calls(self):
+
+        class EchoException(Exception):
+            pass
+
+        class Echo(object):
+
+            def error(self):
+                raise exc
+
+        echo = Echo()
+        exc = EchoException("error!")
+
+        callback = Mock()
+        callback.side_effect = [False, True]
+
+        with patch_wait(echo, 'error', callback):
+            with pytest.raises(EchoException):
+                echo.error()
+            with pytest.raises(EchoException):
+                echo.error()
+
+        assert callback.called
+        assert callback.call_args_list == [
+            call((), {}, None, (EchoException, exc, ANY)),
+            call((), {}, None, (EchoException, exc, ANY))
+        ]
 
     def test_with_new_thread(self):
 
@@ -243,31 +297,7 @@ class TestPatchWait(object):
             assert res is None
 
         assert callback.called
-        assert callback.call_args_list == [call(arg)]
-
-    def test_with_sleep(self):
-
-        class Echo(object):
-
-            def proxy(self, arg):
-                time.sleep(0.1)
-                self.upper(arg)
-
-            def upper(self, arg):
-                return arg.upper()
-
-        echo = Echo()
-        arg = "hello"
-
-        callback = Mock()
-        callback.return_value = True
-
-        with patch_wait(echo, 'upper', callback):
-            res = echo.proxy(arg)
-            assert res is None
-
-        assert callback.called
-        assert callback.call_args_list == [call(arg)]
+        assert callback.call_args_list == [call((arg,), {}, "HELLO", None)]
 
     def test_target_as_mock(self):
 
