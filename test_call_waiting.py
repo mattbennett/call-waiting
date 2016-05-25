@@ -177,6 +177,72 @@ class TestPatchWait(object):
         with patch_wait(echo, 'upper'):
             assert echo.proxy(arg) == "HELLO"
 
+    def test_result(self):
+
+        class Echo(object):
+
+            def upper(self, arg):
+                return arg.upper()
+
+        echo = Echo()
+        arg = "hello"
+
+        with patch_wait(echo, 'upper') as result:
+            res = echo.upper(arg)
+
+        assert result.get() == res
+
+    def test_result_not_ready(self):
+
+        class Echo(object):
+
+            def upper(self, arg):
+                return arg.upper()
+
+        echo = Echo()
+        arg = "hello"
+
+        with patch_wait(echo, 'upper') as result:
+            assert result.get() is None  # not ready
+            res = echo.upper(arg)
+
+        assert result.get() == res
+
+    def test_wrapped_method_raises(self):
+
+        class EchoException(Exception):
+            pass
+
+        class Echo(object):
+
+            def error(self):
+                raise EchoException("error!")
+
+        echo = Echo()
+
+        with patch_wait(echo, 'error'):
+            with pytest.raises(EchoException):
+                echo.error()
+
+    def test_result_get_raises(self):
+
+        class EchoException(Exception):
+            pass
+
+        class Echo(object):
+
+            def error(self):
+                raise EchoException("error!")
+
+        echo = Echo()
+
+        with patch_wait(echo, 'error') as result:
+            with pytest.raises(EchoException):
+                echo.error()
+
+            with pytest.raises(EchoException):
+                result.get()
+
     def test_callback(self):
 
         class Echo(object):
