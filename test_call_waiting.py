@@ -1,8 +1,148 @@
 import time
 from threading import Thread
 
+import pytest
 from call_waiting import patch_wait
 from mock import Mock, call, patch
+
+
+@pytest.yield_fixture
+def forever():
+    value = [True]
+    yield value
+    value.pop()
+
+
+class TestPatchWaitUseCases(object):
+
+    def test_wait_for_specific_result(self, forever):
+
+        class Counter(object):
+            value = 0
+
+            def count(self):
+                self.value += 1
+                return self.value
+
+        counter = Counter()
+
+        def count_forever():
+            while forever:
+                counter.count()
+                time.sleep(0)
+
+        def cb(args, kwargs, res, exc_info):
+            if res == 10:
+                return True
+            return False
+
+        with patch_wait(counter, 'count', callback=cb) as result:
+            Thread(target=count_forever).start()
+
+        assert result.get() == 10
+
+    def test_wait_until_called_with_argument(self, forever):
+
+        class CounterWithSkipTo(object):
+            value = 0
+
+            def count(self):
+                self.value += 1
+                return self.value
+
+            def skip_to(self, skip_to):
+                self.value = skip_to
+                return self.value
+
+        counter = CounterWithSkipTo()
+
+        def increment_forever():
+            while forever:
+                counter.skip_to(counter.value + 1)
+                time.sleep(0)
+
+        def cb(args, kwargs, res, exc_info):
+            if args == (10,):
+                return True
+            return False
+
+        with patch_wait(counter, 'skip_to', callback=cb) as result:
+            Thread(target=increment_forever).start()
+
+        assert result.get() == 10
+
+    def test_wait_until_raises(self, forever):
+
+        class LimitExceeded(Exception):
+            pass
+
+        class CounterWithLimit(object):
+            def __init__(self, limit):
+                self.value = 0
+                self.limit = limit
+
+            def count(self):
+                self.value += 1
+                if self.value >= self.limit:
+                    raise LimitExceeded(self.limit)
+                return self.value
+
+        limit = 10
+        counter = CounterWithLimit(limit)
+
+        def count_forever():
+            while forever:
+                counter.count()
+                time.sleep(0)
+
+        def cb(args, kwargs, res, exc_info):
+            if exc_info is not None:
+                return True
+            return False
+
+        with patch_wait(counter, 'count', callback=cb) as result:
+            Thread(target=count_forever).start()
+
+        with pytest.raises(LimitExceeded):
+            result.get()
+
+    def test_wait_until_stops_raising(self, forever):
+
+        class ThresholdNotReached(Exception):
+            pass
+
+        class CounterWithThreshold(object):
+
+            def __init__(self, threshold):
+                self.value = 0
+                self.threshold = threshold
+
+            def count(self):
+                self.value += 1
+                if self.value < self.threshold:
+                    raise ThresholdNotReached(self.threshold)
+                return self.value
+
+        threshold = 10
+        counter = CounterWithThreshold(threshold)
+
+        def count_forever():
+            while forever:
+                try:
+                    counter.count()
+                except ThresholdNotReached:
+                    pass
+                time.sleep(0)
+
+        def cb(args, kwargs, res, exc_info):
+            if exc_info is not None:
+                return False
+            return True
+
+        with patch_wait(counter, 'count', callback=cb) as result:
+            Thread(target=count_forever).start()
+
+        assert result.get() == threshold
 
 
 class TestPatchWait(object):
