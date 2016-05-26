@@ -3,7 +3,7 @@ from threading import Thread
 
 import pytest
 from call_waiting import patch_wait
-from mock import Mock, call, patch
+from mock import ANY, Mock, call, patch
 
 
 @pytest.yield_fixture
