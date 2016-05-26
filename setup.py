@@ -12,6 +12,7 @@ setup(
     py_modules=['call_waiting'],
     install_requires=[
         'mock',
+        'six',
         'wrapt'
     ],
     extras_require={

@@ -2,6 +2,7 @@ import sys
 from contextlib import contextmanager
 from threading import Semaphore
 
+import six
 from mock import patch
 
 
@@ -23,7 +24,7 @@ def patch_wait(obj, target, callback=None):
 
         def get(self):
             if self.exc_info is not None:
-                raise self.exc_info[1]
+                six.reraise(*self.exc_info)
             return self.res
 
     sem = Semaphore(0)
@@ -51,7 +52,7 @@ def patch_wait(obj, target, callback=None):
         maybe_release(args, kwargs, res, exc_info)
 
         if exc_info is not None:
-            raise exc_info[1]
+            six.reraise(*exc_info)
         return res
 
     with patch.object(obj, target, new=wraps):
