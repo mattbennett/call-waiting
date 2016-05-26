@@ -312,7 +312,9 @@ class TestPatchWait(object):
                 echo.error()
 
         assert callback.called
-        assert callback.call_args_list == [call((), {}, None, (EchoException, exc, ANY))]
+        assert callback.call_args_list == [
+            call((), {}, None, (EchoException, exc, ANY))
+        ]
 
     def test_callback_with_exception_multiple_calls(self):
 
