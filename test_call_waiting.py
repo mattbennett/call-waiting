@@ -1,8 +1,9 @@
+import sys
 import time
 from threading import Thread
 
 import pytest
-from call_waiting import patch_wait
+from call_waiting import WaitResult, patch_wait
 from mock import ANY, Mock, call, patch
 
 
@@ -386,3 +387,48 @@ class TestPatchWait(object):
 
             assert patched_attr.upper.called
             assert instance.attr.upper.called
+
+
+class TestWaitResult(object):
+
+    class CustomError(Exception):
+        pass
+
+    @pytest.fixture
+    def exc_info(self):
+        try:
+            raise self.CustomError("whoops")
+        except:
+            exc_info = sys.exc_info()
+        return exc_info
+
+    def test_has_result(self):
+        result = WaitResult()
+        assert result.has_result is False
+        result.send("ok", None)
+        assert result.has_result is True
+
+    def test_has_exception(self, exc_info):
+        result = WaitResult()
+        assert result.has_result is False
+        result.send(None, exc_info)
+        assert result.has_result is True
+
+    def test_send_multiple_times(self):
+        result = WaitResult()
+        result.send(1, None)
+        result.send(2, None)
+        assert result.get() == 1
+
+    def test_get_result_multiple_times(self):
+        result = WaitResult()
+        result.send(1, None)
+        assert result.get() == 1
+        assert result.get() == 1
+
+    def test_get_raises(self, exc_info):
+
+        result = WaitResult()
+        result.send(1, exc_info)
+        with pytest.raises(self.CustomError):
+            result.get()

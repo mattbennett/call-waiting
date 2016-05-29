@@ -6,26 +6,27 @@ import six
 from mock import patch
 
 
+class WaitResult(object):
+    res = None
+    exc_info = None
+
+    @property
+    def has_result(self):
+        return self.res is not None or self.exc_info is not None
+
+    def send(self, res, exc_info):
+        if not self.has_result:
+            self.res = res
+            self.exc_info = exc_info
+
+    def get(self):
+        if self.exc_info is not None:
+            six.reraise(*self.exc_info)
+        return self.res
+
+
 @contextmanager
 def patch_wait(obj, target, callback=None):
-
-    class WaitResult(object):
-        res = None
-        exc_info = None
-
-        @property
-        def has_result(self):
-            return self.res is not None or self.exc_info is not None
-
-        def send(self, res, exc_info):
-            if not self.has_result:
-                self.res = res
-                self.exc_info = exc_info
-
-        def get(self):
-            if self.exc_info is not None:
-                six.reraise(*self.exc_info)
-            return self.res
 
     sem = Semaphore(0)
     result = WaitResult()
