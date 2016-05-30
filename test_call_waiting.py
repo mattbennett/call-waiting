@@ -3,7 +3,7 @@ import time
 from threading import Thread
 
 import pytest
-from call_waiting import WaitResult, patch_wait
+from call_waiting import WaitResult, wait_for_call
 from mock import ANY, Mock, call, patch
 
 
@@ -37,7 +37,7 @@ class TestPatchWaitUseCases(object):
                 return True
             return False
 
-        with patch_wait(counter, 'count', callback=cb) as result:
+        with wait_for_call(counter, 'count', callback=cb) as result:
             Thread(target=count_forever).start()
 
         assert result.get() == 10
@@ -67,7 +67,7 @@ class TestPatchWaitUseCases(object):
                 return True
             return False
 
-        with patch_wait(counter, 'skip_to', callback=cb) as result:
+        with wait_for_call(counter, 'skip_to', callback=cb) as result:
             Thread(target=increment_forever).start()
 
         assert result.get() == 10
@@ -101,7 +101,7 @@ class TestPatchWaitUseCases(object):
                 return True
             return False
 
-        with patch_wait(counter, 'count', callback=cb) as result:
+        with wait_for_call(counter, 'count', callback=cb) as result:
             Thread(target=count_forever).start()
 
         with pytest.raises(LimitExceeded):
@@ -140,7 +140,7 @@ class TestPatchWaitUseCases(object):
                 return False
             return True
 
-        with patch_wait(counter, 'count', callback=cb) as result:
+        with wait_for_call(counter, 'count', callback=cb) as result:
             Thread(target=count_forever).start()
 
         assert result.get() == threshold
@@ -158,7 +158,7 @@ class TestPatchWait(object):
         echo = Echo()
         arg = "hello"
 
-        with patch_wait(echo, 'upper'):
+        with wait_for_call(echo, 'upper'):
             res = echo.upper(arg)
             assert res == "HELLO"
 
@@ -175,7 +175,7 @@ class TestPatchWait(object):
         echo = Echo()
         arg = "hello"
 
-        with patch_wait(echo, 'upper'):
+        with wait_for_call(echo, 'upper'):
             assert echo.proxy(arg) == "HELLO"
 
     def test_result(self):
@@ -188,7 +188,7 @@ class TestPatchWait(object):
         echo = Echo()
         arg = "hello"
 
-        with patch_wait(echo, 'upper') as result:
+        with wait_for_call(echo, 'upper') as result:
             res = echo.upper(arg)
 
         assert result.get() == res
@@ -203,7 +203,7 @@ class TestPatchWait(object):
         echo = Echo()
         arg = "hello"
 
-        with patch_wait(echo, 'upper') as result:
+        with wait_for_call(echo, 'upper') as result:
             assert result.get() is None  # not ready
             res = echo.upper(arg)
 
@@ -221,7 +221,7 @@ class TestPatchWait(object):
 
         echo = Echo()
 
-        with patch_wait(echo, 'error'):
+        with wait_for_call(echo, 'error'):
             with pytest.raises(EchoException):
                 echo.error()
 
@@ -237,7 +237,7 @@ class TestPatchWait(object):
 
         echo = Echo()
 
-        with patch_wait(echo, 'error') as result:
+        with wait_for_call(echo, 'error') as result:
             with pytest.raises(EchoException):
                 echo.error()
 
@@ -257,7 +257,7 @@ class TestPatchWait(object):
         callback = Mock()
         callback.return_value = True
 
-        with patch_wait(echo, 'upper', callback):
+        with wait_for_call(echo, 'upper', callback):
             res = echo.upper(arg)
             assert res == "HELLO"
 
@@ -280,7 +280,7 @@ class TestPatchWait(object):
         callback = Mock()
         callback.side_effect = [False, True]
 
-        with patch_wait(echo, 'upper', callback):
+        with wait_for_call(echo, 'upper', callback):
             res1 = echo.upper(arg)
             assert res1 == "HELLO-1"
             res2 = echo.upper(arg)
@@ -308,7 +308,7 @@ class TestPatchWait(object):
         callback = Mock()
         callback.return_value = True
 
-        with patch_wait(echo, 'error', callback):
+        with wait_for_call(echo, 'error', callback):
             with pytest.raises(EchoException):
                 echo.error()
 
@@ -333,7 +333,7 @@ class TestPatchWait(object):
         callback = Mock()
         callback.side_effect = [False, True]
 
-        with patch_wait(echo, 'error', callback):
+        with wait_for_call(echo, 'error', callback):
             with pytest.raises(EchoException):
                 echo.error()
             with pytest.raises(EchoException):
@@ -361,7 +361,7 @@ class TestPatchWait(object):
         callback = Mock()
         callback.return_value = True
 
-        with patch_wait(echo, 'upper', callback):
+        with wait_for_call(echo, 'upper', callback):
             res = echo.proxy(arg)
             assert res is None
 
@@ -382,7 +382,7 @@ class TestPatchWait(object):
 
         with patch.object(instance, 'attr') as patched_attr:
 
-            with patch_wait(patched_attr, 'upper'):
+            with wait_for_call(patched_attr, 'upper'):
                 instance.method()
 
             assert patched_attr.upper.called

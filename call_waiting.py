@@ -26,7 +26,7 @@ class WaitResult(object):
 
 
 @contextmanager
-def patch_wait(obj, target, callback=None):
+def wait_for_call(obj, target, callback=None):
 
     sem = Semaphore(0)
     result = WaitResult()
